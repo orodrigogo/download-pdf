@@ -7,4 +7,9 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  progress: {
+    marginTop: 32,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
 })
