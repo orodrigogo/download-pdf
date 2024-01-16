@@ -1,4 +1,4 @@
-import { Download } from "./src/screens/Download"
+import { Download } from "@/screens/Download"
 
 export default function App() {
   return <Download />

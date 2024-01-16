@@ -13,6 +13,7 @@ const PDF_URI = "https://www.mcfadden.com.br/assets/pdf/Flofi.pdf" // pesado
 
 export function Download() {
   const [progressPercentage, setProgressPercentage] = useState(0)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   function onDownloadProgress({
     totalBytesWritten,
@@ -24,6 +25,8 @@ export function Download() {
 
   async function handleDownload() {
     try {
+      setIsDownloading(true)
+
       const fileUri = FileSystem.documentDirectory + PDF_NAME
 
       const downloadResumable = FileSystem.createDownloadResumable(
@@ -36,15 +39,9 @@ export function Download() {
       const downloadResponse = await downloadResumable.downloadAsync()
 
       if (downloadResponse?.uri) {
-        // console.log("Download concluído para ", downloadResponse.uri)
-
-        await fileSave(
-          downloadResponse.uri,
-          PDF_NAME,
-          downloadResponse.headers["content-type"]
-        )
-
+        await fileSave(downloadResponse.uri, PDF_NAME)
         setProgressPercentage(0)
+        setIsDownloading(false)
       }
     } catch (error) {
       Alert.alert("Download", "Não foi possível realizar o download.")
@@ -52,27 +49,23 @@ export function Download() {
     }
   }
 
-  async function fileSave(uri: string, filename: string, mimetype: string) {
+  async function fileSave(uri: string, filename: string) {
     if (Platform.OS === "android") {
-      const permissions =
-        await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync()
+      // Pega a pasta temporária.
+      const directoryUri = FileSystem.cacheDirectory + filename
 
-      if (permissions.granted) {
-        const base64File = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        })
+      // Lê o conteúdo do arquivo em formato base64
+      const base64File = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      })
 
-        const responseUri =
-          await FileSystem.StorageAccessFramework.createFileAsync(
-            permissions.directoryUri,
-            filename,
-            mimetype
-          )
+      // Escreve o conteúdo do arquivo no diretório.
+      await FileSystem.writeAsStringAsync(directoryUri, base64File, {
+        encoding: FileSystem.EncodingType.Base64,
+      })
 
-        await FileSystem.writeAsStringAsync(responseUri, base64File, {
-          encoding: FileSystem.EncodingType.Base64,
-        })
-      }
+      // Abre o arquivo recém-criado
+      await Sharing.shareAsync(directoryUri)
     } else {
       Sharing.shareAsync(uri)
     }
@@ -80,7 +73,12 @@ export function Download() {
 
   return (
     <View style={styles.container}>
-      <Button title="Download PDF" onPress={handleDownload} />
+      <Button
+        title="Download PDF"
+        onPress={handleDownload}
+        isLoading={isDownloading}
+      />
+
       {progressPercentage > 0 && (
         <Text style={styles.progress}>
           {progressPercentage.toFixed(1)}% baixado...
